@@ -16,24 +16,34 @@
 #include "arbInt.h"
 #include "tmisce.h"
 
+static inline void arbSendRsp(SRpcMsg *pMsg, int32_t code) {
+  SRpcMsg rsp = {
+      .code = code,
+      .pCont = pMsg->info.rsp,
+      .contLen = pMsg->info.rspLen,
+      .info = pMsg->info,
+  };
+  tmsgSendRsp(&rsp);
+}
+
 static SArbGroupMember* arbitratorGetMember(SArbitrator *pArb, int32_t dnodeId, int32_t groupId);
 
-static int32_t arbitratorProcessSetGroupsReq(SArbitrator *pArb, SRpcMsg *pMsg) {
-  SArbSetGroupsReq setReq = {0};
-  if (tDeserializeSArbSetGroupsReq(pMsg->pCont, pMsg->contLen, &setReq) != 0) {
+static int32_t arbitratorProcessRegisterGroupsReq(SArbitrator *pArb, SRpcMsg *pMsg) {
+  SArbRegisterGroupReq registerReq = {0};
+  if (tDeserializeSArbitratorGroups(pMsg->pCont, pMsg->contLen, &registerReq) != 0) {
     terrno = TSDB_CODE_INVALID_MSG;
     return -1;
   }
 
-  if (setReq.arbId != pArb->arbId) {
+  if (registerReq.arbId != pArb->arbId) {
     terrno = TSDB_CODE_INVALID_MSG;
-    arbError("arbId not matched local:%d, msg:%d", pArb->arbId, setReq.arbId);
+    arbError("arbId not matched local:%d, msg:%d", pArb->arbId, registerReq.arbId);
     return -1;
   }
 
-  size_t sz = taosArrayGetSize(setReq.groups);
+  size_t sz = taosArrayGetSize(registerReq.groups);
   for (size_t i = 0; i < sz; i++) {
-    SArbitratorGroupInfo *pInfo = taosArrayGet(setReq.groups, i);
+    SArbitratorGroupInfo *pInfo = taosArrayGet(registerReq.groups, i);
     int32_t               groupId = pInfo->groupId;
 
     SArbGroup *pGroup = taosHashGet(pArb->arbGroupMap, &groupId, sizeof(int32_t));
@@ -44,33 +54,66 @@ static int32_t arbitratorProcessSetGroupsReq(SArbitrator *pArb, SRpcMsg *pMsg) {
 
     SArbGroup group = {0};
     for (int8_t j = 0; j < pInfo->replica; j++) {
-      SReplica *pReplica = &pInfo->replicas[j];
-      int32_t   dnodeId = pReplica->id;
+      int32_t dnodeId = pInfo->dnodeIds[j];
       group.members[j].info.dnodeId = dnodeId;
       group.members[j].state.nextHbSeq = 0;
       group.members[j].state.responsedHbSeq = -1;
 
       SArbDnode *pArbDnode = taosHashGet(pArb->arbDnodeMap, &dnodeId, sizeof(int32_t));
-      if (pArbDnode) {
-        taosHashPut(pArbDnode->groupIds, &groupId, sizeof(int32_t), NULL, 0);
+      if (!pArbDnode) {
         continue;
       }
-      // create dnode
-      SArbDnode arbDnode = {0};
-      arbDnode.port = pReplica->port;
-      memcpy(arbDnode.fqdn, pReplica->fqdn, TSDB_FQDN_LEN);
-      arbDnode.groupIds = taosHashInit(16, taosGetDefaultHashFunction(TSDB_DATA_TYPE_INT), false, HASH_NO_LOCK);
-      taosHashPut(arbDnode.groupIds, &groupId, sizeof(int32_t), NULL, 0);
-      taosHashPut(pArb->arbDnodeMap, &dnodeId, sizeof(int32_t), &arbDnode, sizeof(SArbDnode));
+      taosHashPut(pArbDnode->groupIds, &groupId, sizeof(int32_t), NULL, 0);
     }
     taosHashPut(pArb->arbGroupMap, &groupId, sizeof(int32_t), &group, sizeof(SArbGroup));
   }
 
-  arbInfo("arbId:%d, save config while process set groups", pArb->arbId);
+  arbInfo("arbId:%d, save config while process register groups", pArb->arbId);
 
   SArbitratorDiskDate diskData;
   diskData.arbId = pArb->arbId;
-  diskData.arbGroupMap = pArb->arbGroupMap; // not owned by this obj
+  diskData.arbGroupMap = pArb->arbGroupMap; // not owned by diskData
+  if (arbitratorUpdateDiskData(pArb->path, &diskData) < 0) {
+    return -1;
+  }
+
+  return 0;
+}
+
+static int32_t arbitratorProcessUnregisterGroupsReq(SArbitrator *pArb, SRpcMsg *pMsg) {
+  SArbUnregisterGroupReq unregisterReq = {0};
+  if (tDeserializeSArbitratorGroups(pMsg->pCont, pMsg->contLen, &unregisterReq) != 0) {
+    terrno = TSDB_CODE_INVALID_MSG;
+    return -1;
+  }
+
+  if (unregisterReq.arbId != pArb->arbId) {
+    terrno = TSDB_CODE_INVALID_MSG;
+    arbError("arbId not matched local:%d, msg:%d", pArb->arbId, unregisterReq.arbId);
+    return -1;
+  }
+
+  size_t sz = taosArrayGetSize(unregisterReq.groups);
+  for (size_t i = 0; i < sz; i++) {
+    SArbitratorGroupInfo *pInfo = taosArrayGet(unregisterReq.groups, i);
+    int32_t               groupId = pInfo->groupId;
+
+    for (int8_t j = 0; j < pInfo->replica; j++) {
+      int32_t dnodeId = pInfo->dnodeIds[j];
+      SArbDnode *pArbDnode = taosHashGet(pArb->arbDnodeMap, &dnodeId, sizeof(int32_t));
+      if (!pArbDnode) {
+        continue;
+      }
+      taosHashRemove(pArbDnode->groupIds, &groupId, sizeof(int32_t));
+    }
+    taosHashRemove(pArb->arbGroupMap, &groupId, sizeof(int32_t));
+  }
+
+  arbInfo("arbId:%d, save config while process unregister groups", pArb->arbId);
+
+  SArbitratorDiskDate diskData;
+  diskData.arbId = pArb->arbId;
+  diskData.arbGroupMap = pArb->arbGroupMap; // not owned by diskData
   if (arbitratorUpdateDiskData(pArb->path, &diskData) < 0) {
     return -1;
   }
@@ -173,8 +216,11 @@ void arbitratorProcessQueue(SQueueInfo *pInfo, SRpcMsg *pMsg) {
 
   arbTrace("msg:%p, get from arb-mgmt queue", pMsg);
   switch (pMsg->msgType) {
-    case TDMT_ARB_SET_VGROUPS:
-      code = arbitratorProcessSetGroupsReq(pArb, pMsg);
+    case TDMT_ARB_REGISTER_GROUPS:
+      code = arbitratorProcessRegisterGroupsReq(pArb, pMsg);
+      break;
+    case TDMT_ARB_UNREGISTER_GROUPS:
+      code = arbitratorProcessUnregisterGroupsReq(pArb, pMsg);
       break;
     case TDMT_ARB_HEARTBEAT_TIMER:
       code = arbitratorProcessArbHeartBeatTimer(pArb, pMsg);
@@ -192,7 +238,7 @@ void arbitratorProcessQueue(SQueueInfo *pInfo, SRpcMsg *pMsg) {
       if (terrno != 0) code = terrno;
       arbError("msg:%p, failed to process since %s, type:%s", pMsg, tstrerror(code), TMSG_INFO(pMsg->msgType));
     }
-    // arbmSendRsp(pMsg, code);
+    arbSendRsp(pMsg, code);
   }
 
   arbTrace("msg:%p, is freed, code:0x%x", pMsg, code);

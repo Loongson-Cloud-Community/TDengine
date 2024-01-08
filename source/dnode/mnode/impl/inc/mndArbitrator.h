@@ -29,14 +29,16 @@ int32_t  mndInitArbitrator(SMnode *pMnode);
 void     mndCleanupArbitrator(SMnode *pMnode);
 SArbObj *mndAcquireArbitrator(SMnode *pMnode, int32_t arbId);
 void     mndReleaseArbitrator(SMnode *pMnode, SArbObj *pObj);
-int32_t mndSetDropArbitratorInfoToTrans(SMnode *pMnode, STrans *pTrans, SArbObj *pObj, bool force);
-int32_t mndSetCreateArbitratorCommitLogs(STrans *pTrans, SArbObj *pObj);
-int32_t mndSetCreateArbitratorRedoActions(STrans *pTrans, SDnodeObj *pDnode, SArbObj *pObj);
+int32_t  mndSetDropArbitratorInfoToTrans(SMnode *pMnode, STrans *pTrans, SArbObj *pObj, bool force);
+int32_t  mndSetCreateArbitratorCommitLogs(STrans *pTrans, SArbObj *pObj);
+int32_t  mndSetCreateArbitratorRedoActions(STrans *pTrans, SDnodeObj *pDnode, SArbObj *pObj);
 
 int32_t mndAddRegisterVgToArbitratorAction(SMnode *pMnode, STrans *pTrans, SVgObj *pVgroup, bool registerVg);
-int32_t mndSetUpdateArbitratorCommitLogs(SMnode *pMnode, STrans *pTrans, SVgObj *pVgroup, bool registerVg);
+int32_t mndSetUpdateArbitratorCommitLogs(SMnode *pMnode, STrans *pTrans, SVgObj *pVgroups, int32_t numOfRegVgroups,
+                                         bool registerVg);
 
-int32_t mndGetArbitratorSize(SMnode *pMnode);
+SArbObj *mndSortAvailableArbitrator(SArray *pArray);
+int32_t  mndGetArbitratorSize(SMnode *pMnode);
 
 #ifdef __cplusplus
 }

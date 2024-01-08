@@ -522,10 +522,10 @@ static int32_t mndSetCreateDbUndoLogs(SMnode *pMnode, STrans *pTrans, SDbObj *pD
     if (pVgRaw == NULL) return -1;
     if (mndTransAppendUndolog(pTrans, pVgRaw) != 0) return -1;
     if (sdbSetRawStatus(pVgRaw, SDB_STATUS_DROPPED) != 0) return -1;
+  }
 
-    if (pDb->cfg.withArbitrator) {
-      if (mndSetUpdateArbitratorCommitLogs(pMnode, pTrans, pVgroups + v, false) != 0) return -1;
-    }
+  if (pDb->cfg.withArbitrator) {
+    if (mndSetUpdateArbitratorCommitLogs(pMnode, pTrans, pVgroups, pDb->cfg.numOfVgroups, false) != 0) return -1;
   }
 
   return 0;
@@ -543,10 +543,10 @@ static int32_t mndSetCreateDbCommitLogs(SMnode *pMnode, STrans *pTrans, SDbObj *
     if (pVgRaw == NULL) return -1;
     if (mndTransAppendCommitlog(pTrans, pVgRaw) != 0) return -1;
     if (sdbSetRawStatus(pVgRaw, SDB_STATUS_READY) != 0) return -1;
+  }
 
-    if (pDb->cfg.withArbitrator) {
-      if (mndSetUpdateArbitratorCommitLogs(pMnode, pTrans, pVgroups + v, true) != 0) return -1;
-    }
+  if (pDb->cfg.withArbitrator) {
+    if (mndSetUpdateArbitratorCommitLogs(pMnode, pTrans, pVgroups, pDb->cfg.numOfVgroups, true) != 0) return -1;
   }
 
   if (pUserDuped) {
@@ -695,24 +695,6 @@ static int32_t mndCreateDb(SMnode *pMnode, SRpcMsg *pReq, SCreateDbReq *pCreate,
   if (mndSetCreateDbUndoLogs(pMnode, pTrans, &dbObj, pVgroups) != 0) goto _OVER;
   if (mndSetCreateDbCommitLogs(pMnode, pTrans, &dbObj, pVgroups, pNewUserDuped) != 0) goto _OVER;
   if (mndSetCreateDbUndoActions(pMnode, pTrans, &dbObj, pVgroups) != 0) goto _OVER;
-
-  SArbObj *pArbObj = NULL;
-  if (dbObj.cfg.withArbitrator) {
-    for (int i = 0; i < dbObj.cfg.numOfVgroups; i++) {
-      pArbObj = mndAcquireArbitrator(pMnode, pVgroups[i].arbId);
-      SArbObj  arbObj = {0};
-      arbObj.id = -1; // for test
-      arbObj.updateTime = taosGetTimestampMs();
-      arbObj.numOfVgroups = pArbObj->numOfVgroups + 1;
-      arbObj.groupIds = taosArrayDup(pArbObj->groupIds, NULL);
-      if (taosArrayPush(pArbObj->groupIds, &pVgroups[i].vgId) == NULL) goto _OVER;
-
-      if (mndSetCreateArbitratorCommitLogs(pTrans, pArbObj) != 0) goto _OVER;
-
-      mndReleaseArbitrator(pMnode, pArbObj);
-      pArbObj = NULL;
-    }
-  }
 
   if (mndTransPrepare(pMnode, pTrans) != 0) goto _OVER;
 

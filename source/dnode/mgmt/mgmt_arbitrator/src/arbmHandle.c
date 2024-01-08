@@ -159,25 +159,25 @@ int32_t arbmProcessGetAribtratorsRsp(SArbitratorMgmt *pMgmt, SRpcMsg *pRsp) {
 
   size_t arbGroupNum = taosArrayGetSize(getRsp.arbGroups);
   for (int32_t i = 0; i < arbGroupNum; i++) {
-    SArbSetGroupsReq *pArbSetGroupsReq = taosArrayGet(getRsp.arbGroups, i);
-    SArbitratorObj   *pArbObj = arbmAcquireArbitrator(pMgmt, pArbSetGroupsReq->arbId);
+    SArbitratorGroups *pArbGroups = taosArrayGet(getRsp.arbGroups, i);
+    SArbitratorObj   *pArbObj = arbmAcquireArbitrator(pMgmt, pArbGroups->arbId);
     if (pArbObj == NULL) {
-      dInfo("failed to process get-arbitrators rsp, arbitrator:%d not exist", pArbSetGroupsReq->arbId);
+      dInfo("failed to process get-arbitrators rsp, arbitrator:%d not exist", pArbGroups->arbId);
       goto _OVER;
     }
 
-    int32_t contLen = tSerializeSArbSetGroupsReq(NULL, 0, pArbSetGroupsReq);
+    int32_t contLen = tSerializeSArbitratorGroups(NULL, 0, pArbGroups);
     void   *pHead = rpcMallocCont(contLen);
     if (pRsp == NULL) {
       terrno = TSDB_CODE_OUT_OF_MEMORY;
       goto _OVER;
     }
 
-    tSerializeSArbSetGroupsReq(pHead, contLen, pArbSetGroupsReq);
+    tSerializeSArbitratorGroups(pHead, contLen, pArbGroups);
 
     SRpcMsg rpcMsg = {.pCont = pHead,
                       .contLen = contLen,
-                      .msgType = TDMT_ARB_SET_VGROUPS,
+                      .msgType = TDMT_ARB_REGISTER_GROUPS,
                       .info.noResp = 1};
 
     arbmPutNodeMsgToArbQueue(pArbObj, &rpcMsg);
@@ -191,21 +191,71 @@ _OVER:
   return ret;
 }
 
-/*--- pull up timers ---*/
+int32_t arbmProcessRegisterGroupsRep(SArbitratorMgmt *pMgmt, SRpcMsg *pReq) {
+  int32_t              ret = -1;
+  SArbRegisterGroupReq registerReq = {0};
+  if (tDeserializeSArbitratorGroups(pReq->pCont, pReq->contLen, &registerReq)) {
+    dError("failed to deserialize arb-register-groups req since %s", terrstr());
+    goto _OVER;
+  }
+
+  SArbitratorObj *pArbObj = arbmAcquireArbitrator(pMgmt, registerReq.arbId);
+  if (pArbObj == NULL) {
+    dInfo("failed to process arb-register-groups req, arbitrator:%d not exist", registerReq.arbId);
+    goto _OVER;
+  }
+
+  arbmPutNodeMsgToArbQueue(pArbObj, pReq);
+  arbmReleaseArbitrator(pMgmt, pArbObj);
+
+  pReq->info.noResp = 1;
+
+  ret = 0;
+
+_OVER:
+  return ret;
+}
+
+int32_t arbmProcessUnregisterGroupsRep(SArbitratorMgmt *pMgmt, SRpcMsg *pReq) {
+  int32_t              ret = -1;
+  SArbUnregisterGroupReq unregisterReq = {0};
+  if (tDeserializeSArbitratorGroups(pReq->pCont, pReq->contLen, &unregisterReq)) {
+    dError("failed to deserialize arb-unregister-groups req since %s", terrstr());
+    goto _OVER;
+  }
+
+  SArbitratorObj *pArbObj = arbmAcquireArbitrator(pMgmt, unregisterReq.arbId);
+  if (pArbObj == NULL) {
+    dInfo("failed to process arb-unregister-groups req, arbitrator:%d not exist", unregisterReq.arbId);
+    goto _OVER;
+  }
+
+  arbmPutNodeMsgToArbQueue(pArbObj, pReq);
+  arbmReleaseArbitrator(pMgmt, pArbObj);
+
+  pReq->info.noResp = 1;
+
+  ret = 0;
+
+_OVER:
+  return ret;
+}
+
 void arbmPullupGetArbitrators(SArbitratorMgmt *pMgmt) {
   int32_t contLen = 0;
   void   *pReq = arbmBuildTimerMsg(&contLen);
   if (pReq != NULL) {
-    SRpcMsg rpcMsg = {.msgType = TDMT_ARB_GET_ARBS_TIMER, .pCont = pReq, .contLen = contLen};
+    SRpcMsg rpcMsg = {.msgType = TDMT_ARB_GET_ARBS_TIMER, .pCont = pReq, .contLen = contLen, .info.noResp = 1};
     arbmPutRpcMsgToQueue(pMgmt, WRITE_QUEUE, &rpcMsg);
   }
 }
 
+/*--- pull up timers ---*/
 void arbmPullupArbHeartbeat(SArbitratorMgmt *pMgmt) {
   int32_t contLen = 0;
   void   *pReq = arbmBuildTimerMsg(&contLen);
   if (pReq != NULL) {
-    SRpcMsg rpcMsg = {.msgType = TDMT_ARB_HEARTBEAT_TIMER, .pCont = pReq, .contLen = contLen};
+    SRpcMsg rpcMsg = {.msgType = TDMT_ARB_HEARTBEAT_TIMER, .pCont = pReq, .contLen = contLen, .info.noResp = 1};
     arbmPutRpcMsgToQueue(pMgmt, WRITE_QUEUE, &rpcMsg);
   }
 }
@@ -247,6 +297,8 @@ SArray *arbmGetMsgHandles() {
   // Requests handled by ARBITRATOR
   if (dmSetMgmtHandle(pArray, TDMT_DND_CREATE_ARBITRATOR, arbmPutNodeMsgToQueue, 0) == NULL) goto _OVER;
   if (dmSetMgmtHandle(pArray, TDMT_DND_DROP_ARBITRATOR, arbmPutNodeMsgToQueue, 0) == NULL) goto _OVER;
+  if (dmSetMgmtHandle(pArray, TDMT_ARB_REGISTER_GROUPS, arbmPutNodeMsgToQueue, 0) == NULL) goto _OVER;
+  if (dmSetMgmtHandle(pArray, TDMT_ARB_UNREGISTER_GROUPS, arbmPutNodeMsgToQueue, 0) == NULL) goto _OVER;
   if (dmSetMgmtHandle(pArray, TDMT_MND_GET_ARBITRATORS_RSP, arbmPutNodeMsgToQueue, 0) == NULL) goto _OVER;
   if (dmSetMgmtHandle(pArray, TDMT_VND_ARB_HEARTBEAT_RSP, arbmPutNodeMsgToQueue, 0) == NULL) goto _OVER;
   code = 0;

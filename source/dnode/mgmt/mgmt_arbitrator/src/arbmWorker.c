@@ -32,7 +32,6 @@ static void arbmProcessQueue(SQueueInfo *pInfo, SRpcMsg *pMsg) {
   const STraceId  *trace = &pMsg->info.traceId;
 
   dGTrace("msg:%p, get from arb-mgmt queue", pMsg);
-  bool needRsp = true;
   switch (pMsg->msgType) {
     case TDMT_DND_CREATE_ARBITRATOR:
       code = arbmProcessCreateReq(pMgmt, pMsg);
@@ -46,13 +45,17 @@ static void arbmProcessQueue(SQueueInfo *pInfo, SRpcMsg *pMsg) {
     case TDMT_MND_GET_ARBITRATORS_RSP:
       code = arbmProcessGetAribtratorsRsp(pMgmt, pMsg);
       break;
+    case TDMT_ARB_REGISTER_GROUPS:
+      code = arbmProcessRegisterGroupsRep(pMgmt, pMsg);
+      break;
+    case TDMT_ARB_UNREGISTER_GROUPS:
+      code = arbmProcessUnregisterGroupsRep(pMgmt, pMsg);
+      break;
     case TDMT_ARB_GET_ARBS_TIMER:
       code = arbmProcessGetArbitratorsTimer(pMgmt, pMsg);
-      needRsp = false;
       break;
     case TDMT_ARB_HEARTBEAT_TIMER:
       code = arbmProcessArbHeartBeatTimer(pMgmt, pMsg);
-      needRsp = false;
       break;
     default:
       terrno = TSDB_CODE_MSG_NOT_PROCESSED;
@@ -64,7 +67,7 @@ static void arbmProcessQueue(SQueueInfo *pInfo, SRpcMsg *pMsg) {
       if (terrno != 0) code = terrno;
       dGError("msg:%p, failed to process since %s, type:%s", pMsg, tstrerror(code), TMSG_INFO(pMsg->msgType));
     }
-    if (needRsp) arbmSendRsp(pMsg, code);
+    arbmSendRsp(pMsg, code);
   }
 
   dGTrace("msg:%p, is freed, code:0x%x", pMsg, code);

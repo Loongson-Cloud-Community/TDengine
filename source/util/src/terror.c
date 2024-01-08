@@ -700,7 +700,7 @@ TAOS_DEFINE_ERROR(TSDB_CODE_ARB_INVALID_ARB_ID,             "Arbitrator is close
 TAOS_DEFINE_ERROR(TSDB_CODE_ARB_INIT_FAILED,                "Arbitrator init failure")
 TAOS_DEFINE_ERROR(TSDB_CODE_ARB_NOT_EXIST,                  "Arbitrator not exist")
 TAOS_DEFINE_ERROR(TSDB_CODE_ARB_TOKEN_MISMATCH,             "Arbitrator token mismatch")
-TAOS_DEFINE_ERROR(TSDB_CODE_ARB_GROUP_ALREADY_REGISTERED,   "Group is already registered in arbitrator")
+TAOS_DEFINE_ERROR(TSDB_CODE_ARB_GROUP_ALREADY_EXIST,        "Group has registered in arbitrator")
 
 // TDLite
 TAOS_DEFINE_ERROR(TSDB_CODE_TDLITE_IVLD_OPEN_FLAGS,         "Invalid TDLite open flags")

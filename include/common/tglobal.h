@@ -202,7 +202,6 @@ extern int32_t tsTtlBatchDropNum;
 extern int32_t tsTrimVDbIntervalSec;
 extern int32_t tsGrantHBInterval;
 extern int32_t tsUptimeInterval;
-extern int32_t tsGetArbitratorsIntervalSec;
 
 extern bool    tsDisableStream;
 extern int64_t tsStreamBufferSize;

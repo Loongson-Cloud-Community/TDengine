@@ -266,9 +266,6 @@ static void *arbmThreadFp(void *param) {
     if (lastTime % 10 != 0) continue;
 
     int64_t sec = lastTime / 10;
-    if (sec % (tsGetArbitratorsIntervalSec) == 0) {
-      arbmPullupGetArbitrators(pMgmt);
-    }
     if (sec % (ARBITRATOR_TIMEOUT_SEC / 2) == 0) {
       arbmPullupArbHeartbeat(pMgmt);
     }
@@ -338,7 +335,11 @@ _OVER:
   return code;
 }
 
-static int32_t arbmStart(SArbitratorMgmt *pMgmt) { return arbmInitTimer(pMgmt); }
+static int32_t arbmStart(SArbitratorMgmt *pMgmt) {
+  arbmPullupGetArbitrators(pMgmt);
+
+  return arbmInitTimer(pMgmt);
+}
 
 static void arbmStop(SArbitratorMgmt *pMgmt) { arbmCleanupTimer(pMgmt); }
 

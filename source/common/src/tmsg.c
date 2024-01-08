@@ -5752,8 +5752,7 @@ int32_t tSerializeSMGetArbitratorsRsp(void *buf, int32_t bufLen, SMGetArbitrator
       if (tEncodeI32(&encoder, pGInfo->groupId) < 0) return -1;
       if (tEncodeI8(&encoder, pGInfo->replica) < 0) return -1;
       for (int32_t k = 0; k < TSDB_MAX_REPLICA; ++k) {
-        SReplica *pReplica = &pGInfo->replicas[k];
-        if (tEncodeSReplica(&encoder, pReplica) < 0) return -1;
+        if (tEncodeI32(&encoder, pGInfo->dnodeIds[k]) < 0) return -1;
       }
     }
   }
@@ -5786,8 +5785,7 @@ int32_t tDeserializeSMGetArbitratorsRsp(void *buf, int32_t bufLen, SMGetArbitrat
       if (tDecodeI32(&decoder, &gInfo.groupId) < 0) return -1;
       if (tDecodeI8(&decoder, &gInfo.replica) < 0) return -1;
       for (int32_t k = 0; k < TSDB_MAX_REPLICA; ++k) {
-        SReplica *pReplica = &gInfo.replicas[k];
-        if (tDecodeSReplica(&decoder, pReplica) < 0) return -1;
+        if (tDecodeI32(&decoder, &gInfo.dnodeIds[k]) < 0) return -1;
       }
       taosArrayPush(arbGroup.groups, &gInfo);
     }
