@@ -493,7 +493,8 @@ static void *mndBuildRegisterVgToArbitratorReq(SMnode *pMnode, SDnodeObj *pDnode
   return pReq;
 }
 
-int32_t mndAddRegisterVgToArbitratorAction(SMnode *pMnode, STrans *pTrans, SVgObj *pVgroup, bool registerVg) {
+int32_t mndAddRegisterVgToArbitratorAction(SMnode *pMnode, STrans *pTrans, SVgObj *pVgroup, bool registerVg,
+                                           bool isRedoAction) {
   SArbObj *pArbObj = mndAcquireArbitrator(pMnode, pVgroup->arbId);
   if (!pArbObj) return -1;
 
@@ -513,9 +514,16 @@ int32_t mndAddRegisterVgToArbitratorAction(SMnode *pMnode, STrans *pTrans, SVgOb
   action.msgType = registerVg ? TDMT_ARB_REGISTER_GROUPS : TDMT_ARB_UNREGISTER_GROUPS;
   action.acceptableCode = TSDB_CODE_ARB_GROUP_ALREADY_EXIST;
 
-  if (mndTransAppendRedoAction(pTrans, &action) != 0) {
-    taosMemoryFree(pReq);
-    return -1;
+  if (isRedoAction) {
+    if (mndTransAppendRedoAction(pTrans, &action) != 0) {
+      taosMemoryFree(pReq);
+      return -1;
+    }
+  } else {
+    if (mndTransAppendUndoAction(pTrans, &action) != 0) {
+      taosMemoryFree(pReq);
+      return -1;
+    }
   }
 
   return 0;

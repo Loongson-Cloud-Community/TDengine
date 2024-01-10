@@ -205,7 +205,7 @@ typedef enum _mgmt_table {
 #define TD_REQ_FROM_APP  0
 #define TD_REQ_FROM_TAOX 1
 
-#define TD_ARB_TOKEN_SIZE 128
+#define TD_ARB_TOKEN_SIZE 32
 
 typedef enum ENodeType {
   // Syntax nodes are used in parser and planner module, and some are also used in executor module, such as COLUMN,

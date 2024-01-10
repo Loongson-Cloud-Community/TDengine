@@ -67,6 +67,7 @@ static int32_t arbitratorProcessRegisterGroupsReq(SArbitrator *pArb, SRpcMsg *pM
         pArbDnode = taosHashGet(pArb->arbDnodeMap, &dnodeId, sizeof(int32_t));
       }
       taosHashPut(pArbDnode->groupIds, &groupId, sizeof(int32_t), NULL, 0);
+      arbDebug("arbId:%d, add group:%d, map size:%d", pArb->arbId, groupId, taosHashGetSize(pArbDnode->groupIds));
     }
     taosHashPut(pArb->arbGroupMap, &groupId, sizeof(int32_t), &group, sizeof(SArbGroup));
   }
