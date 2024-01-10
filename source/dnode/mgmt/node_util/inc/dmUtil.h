@@ -188,7 +188,7 @@ void    dmGetMnodeEpSetForRedirect(SDnodeData *pData, SRpcMsg *pMsg, SEpSet *pEp
 void    dmSetMnodeEpSet(SDnodeData *pData, SEpSet *pEpSet);
 bool    dmUpdateDnodeInfo(void *pData, int32_t *dnodeId, int64_t *clusterId, char *fqdn, uint16_t *port);
 void    dmRemoveDnodePairs(SDnodeData *pData);
-void    dmGetDnodeEp(SDnodeData *pData, int32_t dnodeId, char *pEp, char *pFqdn, uint16_t *pPort);
+void    dmGetDnodeEp(void *pData, int32_t dnodeId, char *pEp, char *pFqdn, uint16_t *pPort);
 
 #ifdef __cplusplus
 }

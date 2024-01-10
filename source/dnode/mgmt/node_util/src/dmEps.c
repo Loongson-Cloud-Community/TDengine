@@ -31,7 +31,8 @@ static bool    dmIsEpChanged(SDnodeData *pData, int32_t dnodeId, const char *ep)
 static void    dmResetEps(SDnodeData *pData, SArray *dnodeEps);
 static int32_t dmReadDnodePairs(SDnodeData *pData);
 
-void dmGetDnodeEp(SDnodeData *pData, int32_t dnodeId, char *pEp, char *pFqdn, uint16_t *pPort) {
+void dmGetDnodeEp(void *data, int32_t dnodeId, char *pEp, char *pFqdn, uint16_t *pPort) {
+  SDnodeData *pData = data;
   taosThreadRwlockRdlock(&pData->lock);
 
   SDnodeEp *pDnodeEp = taosHashGet(pData->dnodeHash, &dnodeId, sizeof(int32_t));

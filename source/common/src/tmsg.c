@@ -5924,6 +5924,7 @@ int32_t tDeserializeSVArbHeartBeatReq(void *buf, int32_t bufLen, SVArbHeartBeatR
     SVArbHeartBeatSeq arbHbSeq = {0};
     if (tDecodeI32(&decoder, &arbHbSeq.groupId) < 0) return -1;
     if (tDecodeI32(&decoder, &arbHbSeq.seqNo) < 0) return -1;
+    taosArrayPush(pReq->arbSeqArray, &arbHbSeq);
   }
   tEndDecode(&decoder);
 
@@ -5977,6 +5978,7 @@ int32_t tDeserializeSVArbHeartBeatRsp(void *buf, int32_t bufLen, SVArbHeartBeatR
     if (tDecodeI32(&decoder, &hbMember.groupId) < 0) return -1;
     if (tDecodeI32(&decoder, &hbMember.seqNo) < 0) return -1;
     if (tDecodeCStrTo(&decoder, hbMember.memberToken) < 0) return -1;
+    taosArrayPush(pRsp->hbMembers, &hbMember);
   }
   tEndDecode(&decoder);
 

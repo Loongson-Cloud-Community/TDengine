@@ -66,6 +66,10 @@ static void arbmFreeArbitratorObj(SArbitratorObj **ppArbObj) {
   ppArbObj[0] = NULL;
 }
 
+static void arbmGetDnodeEp(SDnodeData *pData, int32_t dnodeId, char *pEp, char *pFqdn, uint16_t *pPort){
+
+}
+
 int32_t arbmOpenArbitrator(SArbitratorMgmt *pMgmt, SArbWrapperCfg *pCfg, SArbitrator *pImpl) {
   SArbitratorObj *pArbObj = taosMemoryCalloc(1, sizeof(SArbitratorObj));
   if (pArbObj == NULL) {

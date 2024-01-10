@@ -26,7 +26,7 @@ static inline void arbSendRsp(SRpcMsg *pMsg, int32_t code) {
   tmsgSendRsp(&rsp);
 }
 
-static SArbGroupMember* arbitratorGetMember(SArbitrator *pArb, int32_t dnodeId, int32_t groupId);
+static SArbGroupMember *arbitratorGetMember(SArbitrator *pArb, int32_t dnodeId, int32_t groupId);
 
 static int32_t arbitratorProcessRegisterGroupsReq(SArbitrator *pArb, SRpcMsg *pMsg) {
   SArbRegisterGroupReq registerReq = {0};
@@ -61,7 +61,10 @@ static int32_t arbitratorProcessRegisterGroupsReq(SArbitrator *pArb, SRpcMsg *pM
 
       SArbDnode *pArbDnode = taosHashGet(pArb->arbDnodeMap, &dnodeId, sizeof(int32_t));
       if (!pArbDnode) {
-        continue;
+        SArbDnode arbDnode = {0};
+        arbDnode.groupIds = taosHashInit(64, taosGetDefaultHashFunction(TSDB_DATA_TYPE_INT), true, HASH_NO_LOCK);
+        taosHashPut(pArb->arbDnodeMap, &dnodeId, sizeof(int32_t), &arbDnode, sizeof(SArbDnode));
+        pArbDnode = taosHashGet(pArb->arbDnodeMap, &dnodeId, sizeof(int32_t));
       }
       taosHashPut(pArbDnode->groupIds, &groupId, sizeof(int32_t), NULL, 0);
     }
@@ -72,7 +75,7 @@ static int32_t arbitratorProcessRegisterGroupsReq(SArbitrator *pArb, SRpcMsg *pM
 
   SArbitratorDiskDate diskData;
   diskData.arbId = pArb->arbId;
-  diskData.arbGroupMap = pArb->arbGroupMap; // not owned by diskData
+  diskData.arbGroupMap = pArb->arbGroupMap;  // not owned by diskData
   if (arbitratorUpdateDiskData(pArb->path, &diskData) < 0) {
     return -1;
   }
@@ -99,10 +102,13 @@ static int32_t arbitratorProcessUnregisterGroupsReq(SArbitrator *pArb, SRpcMsg *
     int32_t               groupId = pInfo->groupId;
 
     for (int8_t j = 0; j < pInfo->replica; j++) {
-      int32_t dnodeId = pInfo->dnodeIds[j];
+      int32_t    dnodeId = pInfo->dnodeIds[j];
       SArbDnode *pArbDnode = taosHashGet(pArb->arbDnodeMap, &dnodeId, sizeof(int32_t));
       if (!pArbDnode) {
-        continue;
+        SArbDnode arbDnode = {0};
+        arbDnode.groupIds = taosHashInit(64, taosGetDefaultHashFunction(TSDB_DATA_TYPE_INT), true, HASH_NO_LOCK);
+        taosHashPut(pArb->arbDnodeMap, &dnodeId, sizeof(int32_t), &arbDnode, sizeof(SArbDnode));
+        pArbDnode = taosHashGet(pArb->arbDnodeMap, &dnodeId, sizeof(int32_t));
       }
       taosHashRemove(pArbDnode->groupIds, &groupId, sizeof(int32_t));
     }
@@ -113,7 +119,7 @@ static int32_t arbitratorProcessUnregisterGroupsReq(SArbitrator *pArb, SRpcMsg *
 
   SArbitratorDiskDate diskData;
   diskData.arbId = pArb->arbId;
-  diskData.arbGroupMap = pArb->arbGroupMap; // not owned by diskData
+  diskData.arbGroupMap = pArb->arbGroupMap;  // not owned by diskData
   if (arbitratorUpdateDiskData(pArb->path, &diskData) < 0) {
     return -1;
   }
@@ -122,10 +128,9 @@ static int32_t arbitratorProcessUnregisterGroupsReq(SArbitrator *pArb, SRpcMsg *
 }
 
 static int32_t arbitratorProcessArbHeartBeatTimer(SArbitrator *pArb, SRpcMsg *pMsg) {
-  size_t keyLen = 0;
   void  *pIter = taosHashIterate(pArb->arbDnodeMap, NULL);
   while (pIter) {
-    int32_t    dnodeId = *(int32_t *)taosHashGetKey(pIter, &keyLen);
+    int32_t    dnodeId = *(int32_t *)taosHashGetKey(pIter, NULL);
     SArbDnode *pArbDnode = pIter;
 
     SVArbHeartBeatReq req = {0};
@@ -153,7 +158,7 @@ static int32_t arbitratorProcessArbHeartBeatTimer(SArbitrator *pArb, SRpcMsg *pM
     SRpcMsg rpcMsg = {.pCont = pHead, .contLen = contLen, .msgType = TDMT_VND_ARB_HEARTBEAT};
 
     SEpSet epset = {.inUse = 0, .numOfEps = 1};
-    addEpIntoEpSet(&epset, pArbDnode->fqdn, pArbDnode->port);
+    pArb->msgCb.getDnodeEpFp(pArb->msgCb.data, dnodeId, NULL, epset.eps[0].fqdn, &epset.eps[0].port);
     pArb->msgCb.sendReqFp(&epset, &rpcMsg);
 
     tFreeSVArbHeartBeatReq(&req);
@@ -166,15 +171,15 @@ static int32_t arbitratorProcessArbHeartBeatTimer(SArbitrator *pArb, SRpcMsg *pM
 static void arbitratorUpdateArbGroupMemberState(SArbitrator *pArb, int32_t dnodeId, SArray *hbMembers) {
   size_t sz = taosArrayGetSize(hbMembers);
   for (size_t i = 0; i < sz; i++) {
-    SVArbHbMember *pHbMember = taosArrayGet(hbMembers, i);
+    SVArbHbMember   *pHbMember = taosArrayGet(hbMembers, i);
     SArbGroupMember *pMember = arbitratorGetMember(pArb, dnodeId, pHbMember->groupId);
     if (pMember == NULL) {
       continue;
     }
 
     if (pMember->state.responsedHbSeq >= pHbMember->seqNo) {
-      arbInfo("arbId:%d, update dnodeId:%d groupId:%d token failed, seqNo expired, msg:%d local:%d", pArb->arbId, dnodeId,
-              pHbMember->groupId, pHbMember->seqNo, pMember->state.responsedHbSeq);
+      arbInfo("arbId:%d, update dnodeId:%d groupId:%d token failed, seqNo expired, msg:%d local:%d", pArb->arbId,
+              dnodeId, pHbMember->groupId, pHbMember->seqNo, pMember->state.responsedHbSeq);
       continue;
     }
 
@@ -246,7 +251,7 @@ void arbitratorProcessQueue(SQueueInfo *pInfo, SRpcMsg *pMsg) {
   taosFreeQitem(pMsg);
 }
 
-static SArbGroupMember* arbitratorGetMember(SArbitrator *pArb, int32_t dnodeId, int32_t groupId) {
+static SArbGroupMember *arbitratorGetMember(SArbitrator *pArb, int32_t dnodeId, int32_t groupId) {
   SArbGroup *pGroup = taosHashGet(pArb->arbGroupMap, &groupId, sizeof(int32_t));
   if (pGroup == NULL) {
     goto _OUT;

@@ -40,8 +40,7 @@ static int arbitratorEncodeDiskData(const SArbitratorDiskDate *pDiskData, char *
     if (jGroup == NULL) goto _err;
     if (tjsonAddItemToArray(jGroups, jGroup) < 0) goto _err;
     SArbGroup *pGroup = iter;
-    size_t    keyLen = 0;
-    int32_t   *pGroupId = taosHashGetKey(iter, &keyLen);
+    int32_t   *pGroupId = taosHashGetKey(iter, NULL);
     if (tjsonAddIntegerToObject(jGroup, "groupId", *pGroupId) < 0) goto _err;
     SJson *jMembers = tjsonCreateArray();
     if (jMembers == NULL) goto _err;
@@ -285,6 +284,30 @@ void arbitratorDestroy(const char *path) {
   taosRemoveDir(path);
 }
 
+static SHashObj *arbitratorInitDnodeMap(SHashObj *arbGroupMap) {
+  SHashObj *arbDnodeMap = taosHashInit(64, taosGetDefaultHashFunction(TSDB_DATA_TYPE_INT), true, HASH_NO_LOCK);
+
+  void *iter = taosHashIterate(arbGroupMap, NULL);
+  while (iter) {
+    SArbGroup *pArbGroup = iter;
+    int32_t   *groupId = taosHashGetKey(iter, NULL);
+    for (int32_t i = 0; i < 2; i++) {
+      int32_t    dnodeId = pArbGroup->members[i].info.dnodeId;
+      SArbDnode *pArbDnode = taosHashGet(arbDnodeMap, &dnodeId, sizeof(int32_t));
+      if (!pArbDnode) {
+        SArbDnode arbDnode = {0};
+        arbDnode.groupIds = taosHashInit(64, taosGetDefaultHashFunction(TSDB_DATA_TYPE_INT), true, HASH_NO_LOCK);
+        taosHashPut(arbDnodeMap, &dnodeId, sizeof(int32_t), &arbDnode, sizeof(SArbDnode));
+        pArbDnode = taosHashGet(arbDnodeMap, &dnodeId, sizeof(int32_t));
+      }
+      taosHashPut(pArbDnode->groupIds, &groupId, sizeof(int32_t), NULL, 0);
+    }
+    iter = taosHashIterate(arbGroupMap, iter);
+  }
+
+  return arbDnodeMap;
+}
+
 SArbitrator *arbitratorOpen(const char *path, SMsgCb msgCb) {
   SArbitrator        *pArbitrator = NULL;
   SArbitratorDiskDate diskDate = {0};
@@ -312,7 +335,8 @@ SArbitrator *arbitratorOpen(const char *path, SMsgCb msgCb) {
 
   pArbitrator->arbId = diskDate.arbId;
   pArbitrator->arbGroupMap = diskDate.arbGroupMap;
-  pArbitrator->arbDnodeMap = taosHashInit(64, taosGetDefaultHashFunction(TSDB_DATA_TYPE_INT), true, HASH_NO_LOCK);
+  pArbitrator->arbDnodeMap = arbitratorInitDnodeMap(pArbitrator->arbGroupMap);
+  arbitratorGenerateArbToken(pArbitrator->arbId, pArbitrator->arbToken);
   pArbitrator->msgCb = msgCb;
   strcpy(pArbitrator->path, path);
 

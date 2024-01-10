@@ -467,6 +467,7 @@ SMsgCb dmGetMsgcb(SDnode *pDnode) {
       .releaseHandleFp = dmReleaseHandle,
       .reportStartupFp = dmReportStartup,
       .updateDnodeInfoFp = dmUpdateDnodeInfo,
+      .getDnodeEpFp = dmGetDnodeEp,
       .data = &pDnode->data,
   };
   return msgCb;

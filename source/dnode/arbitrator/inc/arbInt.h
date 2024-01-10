@@ -68,8 +68,8 @@ typedef struct {
 
 /* --------------------- SArbDnode --------------------- */
 typedef struct {
-  int32_t   port;
-  char      fqdn[TSDB_FQDN_LEN];
+  // int32_t   port;
+  // char      fqdn[TSDB_FQDN_LEN];
   SHashObj *groupIds;  // groupId;
 } SArbDnode;
 
