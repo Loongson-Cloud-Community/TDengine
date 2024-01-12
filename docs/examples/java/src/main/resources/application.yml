@@ -5,8 +5,8 @@ server:
 spring:
   datasource:
     driver-class-name: com.taosdata.jdbc.rs.RestfulDriver
-    url: jdbc:TAOS-RS://gw.ww-west.pre.cloud.taosdata.com/test?useSSL=true&token=xxxx
-# using connection pools
+    url: jdbc:TAOS-RS://xxxxxx/test?useSSL=true&token=xxxx
+    # using connection pools
     type: com.alibaba.druid.pool.DruidDataSource
     druid:
       initial-size: 5
