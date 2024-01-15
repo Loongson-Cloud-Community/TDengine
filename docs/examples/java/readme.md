@@ -12,7 +12,7 @@ Use Spring Boot to build a simple web application, and deploy it to connect to T
 mvn clean package -Dmaven.test.skip=true
 ```
 
-2. find the datasource url from cloud page `Programming -> Java -> Config`, and run the project
+2. replace the current url with the database configuration in cloud page `Programming -> Java -> Config`, and run the project
 
 ```
 java -jar target/example-1.0-SNAPSHOT.jar --spring.datasource.url="jdbc:TAOS-RS://xxxxx"
