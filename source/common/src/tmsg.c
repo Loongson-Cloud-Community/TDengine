@@ -5993,6 +5993,80 @@ void tFreeSVArbHeartBeatRsp(SVArbHeartBeatRsp *pRsp) {
   taosArrayDestroy(pRsp->hbMembers);
 }
 
+int32_t tSerializeSVArbCheckSyncReq(void *buf, int32_t bufLen, SVArbCheckSyncReq *pReq) {
+  SEncoder encoder = {0};
+  tEncoderInit(&encoder, buf, bufLen);
+
+  if (tStartEncode(&encoder) < 0) return -1;
+  if (tEncodeI32(&encoder, pReq->arbId) < 0) return -1;
+  if (tEncodeBinary(&encoder, pReq->arbToken, TD_ARB_TOKEN_SIZE) < 0) return -1;
+  for (int32_t i = 0; i < 2; i++) {
+    if (tEncodeBinary(&encoder, pReq->memberTokens[i], TD_ARB_TOKEN_SIZE) < 0) return -1;
+  }
+
+  tEndEncode(&encoder);
+
+  int32_t tlen = encoder.pos;
+  tEncoderClear(&encoder);
+  return tlen;
+}
+
+int32_t tDeserializeSVArbCheckSyncReq(void *buf, int32_t bufLen, SVArbCheckSyncReq *pReq) {
+  SDecoder decoder = {0};
+  tDecoderInit(&decoder, buf, bufLen);
+
+  if (tStartDecode(&decoder) < 0) return -1;
+  if (tDecodeI32(&decoder, &pReq->arbId) < 0) return -1;
+  if (tDecodeCStrTo(&decoder, pReq->arbToken) < 0) return -1;
+  for (int32_t i = 0; i < 2; i++) {
+    if (tDecodeCStrTo(&decoder, pReq->memberTokens[i]) < 0) return -1;
+  }
+
+  tEndDecode(&decoder);
+
+  tDecoderClear(&decoder);
+  return 0;
+}
+
+int32_t tSerializeSVArbCheckSyncRsp(void* buf, int32_t bufLen, SVArbCheckSyncRsp* pRsp) {
+  SEncoder encoder = {0};
+  tEncoderInit(&encoder, buf, bufLen);
+
+  if (tStartEncode(&encoder) < 0) return -1;
+  if (tEncodeI32(&encoder, pRsp->arbId) < 0) return -1;
+  if (tEncodeBinary(&encoder, pRsp->arbToken, TD_ARB_TOKEN_SIZE) < 0) return -1;
+  for (int32_t i = 0; i < 2; i++) {
+    if (tEncodeBinary(&encoder, pRsp->memberTokens[i], TD_ARB_TOKEN_SIZE) < 0) return -1;
+  }
+  if (tEncodeI32(&encoder, pRsp->groupId) < 0) return -1;
+  if (tEncodeI32(&encoder, pRsp->errCode) < 0) return -1;
+
+  tEndEncode(&encoder);
+
+  int32_t tlen = encoder.pos;
+  tEncoderClear(&encoder);
+  return tlen;
+}
+
+int32_t tDeserializeSVArbCheckSyncRsp(void* buf, int32_t bufLen, SVArbCheckSyncRsp* pRsp) {
+  SDecoder decoder = {0};
+  tDecoderInit(&decoder, buf, bufLen);
+
+  if (tStartDecode(&decoder) < 0) return -1;
+  if (tDecodeI32(&decoder, &pRsp->arbId) < 0) return -1;
+  if (tDecodeCStrTo(&decoder, pRsp->arbToken) < 0) return -1;
+  for (int32_t i = 0; i < 2; i++) {
+    if (tDecodeCStrTo(&decoder, pRsp->memberTokens[i]) < 0) return -1;
+  }
+  if (tDecodeI32(&decoder, &pRsp->groupId) < 0) return -1;
+  if (tDecodeI32(&decoder, &pRsp->errCode) < 0) return -1;
+
+  tEndDecode(&decoder);
+
+  tDecoderClear(&decoder);
+  return 0;
+}
+
 int32_t tSerializeSAuthReq(void *buf, int32_t bufLen, SAuthReq *pReq) {
   SEncoder encoder = {0};
   tEncoderInit(&encoder, buf, bufLen);

@@ -53,6 +53,7 @@ typedef struct {
   int32_t nextHbSeq;
   int32_t responsedHbSeq;
   char    token[TD_ARB_TOKEN_SIZE];
+  int64_t lastHbMs;
 } SArbMemberState;
 
 typedef struct {
@@ -62,14 +63,13 @@ typedef struct {
 
 typedef struct {
   SArbGroupMember    members[2];
+  int32_t            epIndex;
   bool               isSync;
   SArbAssignedLeader assignedLeader;
 } SArbGroup;
 
 /* --------------------- SArbDnode --------------------- */
 typedef struct {
-  // int32_t   port;
-  // char      fqdn[TSDB_FQDN_LEN];
   SHashObj *groupIds;  // groupId;
 } SArbDnode;
 
@@ -84,6 +84,8 @@ struct SArbitrator {
 };
 
 int32_t arbitratorUpdateDiskData(const char *dir, SArbitratorDiskDate *pData);
+
+void arbitratorInitSArbGroup(SArbGroup *pGroup);
 
 #ifdef __cplusplus
 }

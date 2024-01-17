@@ -2150,6 +2150,26 @@ int32_t tDeserializeSVArbHeartBeatRsp(void* buf, int32_t bufLen, SVArbHeartBeatR
 void    tFreeSVArbHeartBeatRsp(SVArbHeartBeatRsp* pRsp);
 
 typedef struct {
+  int32_t arbId;
+  char    arbToken[TD_ARB_TOKEN_SIZE];
+  char    memberTokens[2][TD_ARB_TOKEN_SIZE];
+} SVArbCheckSyncReq;
+
+int32_t tSerializeSVArbCheckSyncReq(void* buf, int32_t bufLen, SVArbCheckSyncReq* pReq);
+int32_t tDeserializeSVArbCheckSyncReq(void* buf, int32_t bufLen, SVArbCheckSyncReq* pReq);
+
+typedef struct {
+  int32_t arbId;
+  char    arbToken[TD_ARB_TOKEN_SIZE];
+  char    memberTokens[2][TD_ARB_TOKEN_SIZE];
+  int32_t groupId;
+  int32_t errCode;
+} SVArbCheckSyncRsp;
+
+int32_t tSerializeSVArbCheckSyncRsp(void* buf, int32_t bufLen, SVArbCheckSyncRsp* pRsp);
+int32_t tDeserializeSVArbCheckSyncRsp(void* buf, int32_t bufLen, SVArbCheckSyncRsp* pRsp);
+
+typedef struct {
   char queryStrId[TSDB_QUERY_ID_LEN];
 } SKillQueryReq;
 

@@ -273,6 +273,10 @@ static void *arbmThreadFp(void *param) {
     if (sec % (ARBITRATOR_TIMEOUT_SEC / 2) == 0) {
       arbmPullupArbHeartbeat(pMgmt);
     }
+
+    if (sec % (ARBITRATOR_TIMEOUT_SEC / 2) == 0) {
+      arbmPullupArbCheckSync(pMgmt);
+    }
   }
 
   return NULL;
@@ -340,7 +344,7 @@ _OVER:
 }
 
 static int32_t arbmStart(SArbitratorMgmt *pMgmt) {
-  arbmPullupGetArbitrators(pMgmt);
+  arbmGetArbitrators(pMgmt);
 
   return arbmInitTimer(pMgmt);
 }

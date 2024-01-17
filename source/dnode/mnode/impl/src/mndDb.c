@@ -569,8 +569,10 @@ static int32_t mndSetCreateDbRedoActions(SMnode *pMnode, STrans *pTrans, SDbObj 
         return -1;
       }
     }
-    if (mndAddRegisterVgToArbitratorAction(pMnode, pTrans, pVgroup, true, true) != 0) {
-      return -1;
+    if (pDb->cfg.withArbitrator) {
+      if (mndAddRegisterVgToArbitratorAction(pMnode, pTrans, pVgroup, true, true) != 0) {
+        return -1;
+      }
     }
   }
 
@@ -587,8 +589,10 @@ static int32_t mndSetCreateDbUndoActions(SMnode *pMnode, STrans *pTrans, SDbObj 
         return -1;
       }
     }
-    if (mndAddRegisterVgToArbitratorAction(pMnode, pTrans, pVgroup, false, false) != 0) {
-      return -1;
+    if (pDb->cfg.withArbitrator) {
+      if (mndAddRegisterVgToArbitratorAction(pMnode, pTrans, pVgroup, false, false) != 0) {
+        return -1;
+      }
     }
   }
 

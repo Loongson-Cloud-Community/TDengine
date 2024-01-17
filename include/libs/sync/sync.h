@@ -284,6 +284,7 @@ int32_t   syncSendTimeoutRsp(int64_t rid, int64_t seq);
 int32_t   syncForceBecomeFollower(SSyncNode* ths, const SRpcMsg* pRpcMsg);
 
 SSyncState  syncGetState(int64_t rid);
+bool        syncGetAssignedLogSynced(int64_t rid);
 void        syncGetRetryEpSet(int64_t rid, SEpSet* pEpSet);
 const char* syncStr(ESyncState state);
 

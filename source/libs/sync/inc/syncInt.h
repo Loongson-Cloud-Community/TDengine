@@ -160,6 +160,9 @@ typedef struct SSyncNode {
   SSyncLogStore* pLogStore;
   SyncIndex      commitIndex;
 
+  // assigned leader log vars
+  SyncIndex assignedCommitIndex;
+
   // timer ms init
   int32_t pingBaseLine;
   int32_t electBaseLine;

@@ -95,7 +95,8 @@ static int arbitratorDecodeDiskData(uint8_t *pData, SArbitratorDiskDate *pDate) 
     int32_t groupId = 0;
     if (tjsonGetIntValue(jGroup, "groupId", &groupId) < 0) goto _err;
     SArbGroup arbGroup = {0};
-    SJson    *jMembers = tjsonGetObjectItem(jGroup, "members");
+    arbitratorInitSArbGroup(&arbGroup);
+    SJson *jMembers = tjsonGetObjectItem(jGroup, "members");
     for (int j = 0; j < 2; j++) {
       SJson *jMember = tjsonGetArrayItem(jMembers, j);
       if (jMember == NULL) goto _err;
@@ -105,14 +106,6 @@ static int arbitratorDecodeDiskData(uint8_t *pData, SArbitratorDiskDate *pDate) 
     SJson *jAssignedLeader = tjsonGetObjectItem(jGroup, "assignedLeader");
     if (tjsonGetIntValue(jAssignedLeader, "dnodeId", &arbGroup.assignedLeader.dnodeId) < 0) goto _err;
     if (tjsonGetStringValue(jAssignedLeader, "token", arbGroup.assignedLeader.token) < 0) goto _err;
-
-    {  // init other values
-      arbGroup.isSync = false;
-      for (int j = 0; j < 2; j++) {
-        arbGroup.members[j].state.nextHbSeq = 0;
-        arbGroup.members[j].state.responsedHbSeq = -1;
-      }
-    }
 
     taosHashPut(pDate->arbGroupMap, &groupId, sizeof(int32_t), &arbGroup, sizeof(SArbGroup));
   }
@@ -249,6 +242,19 @@ int32_t arbitratorUpdateDiskData(const char *dir, SArbitratorDiskDate *pData) {
     return -1;
   }
   return 0;
+}
+
+void arbitratorInitSArbGroup(SArbGroup *pGroup) {
+  pGroup->epIndex = 0;
+  for (int i = 0; i < 2; i++) {
+    pGroup->members[i].info.dnodeId = 0;
+    pGroup->members[i].state.nextHbSeq = 1;
+    pGroup->members[i].state.responsedHbSeq = 0;
+    pGroup->members[i].state.lastHbMs = 0;
+  }
+  pGroup->epIndex = 0;
+  pGroup->isSync = false;
+  pGroup->assignedLeader.dnodeId = 0;
 }
 
 int32_t arbitratorCreate(const char *path, int32_t arbId) {

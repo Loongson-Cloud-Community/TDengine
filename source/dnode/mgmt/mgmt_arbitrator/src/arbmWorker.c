@@ -39,11 +39,14 @@ static void arbmProcessQueue(SQueueInfo *pInfo, SRpcMsg *pMsg) {
     case TDMT_DND_DROP_ARBITRATOR:
       code = arbmProcessDropReq(pMgmt, pMsg);
       break;
+    case TDMT_MND_GET_ARBITRATORS_RSP:
+      code = arbmProcessGetAribtratorsRsp(pMgmt, pMsg);
+      break;
     case TDMT_VND_ARB_HEARTBEAT_RSP:
       code = arbmProcessArbHeartBeatRsp(pMgmt, pMsg);
       break;
-    case TDMT_MND_GET_ARBITRATORS_RSP:
-      code = arbmProcessGetAribtratorsRsp(pMgmt, pMsg);
+    case TDMT_VND_ARB_CHECK_SYNC_RSP:
+      code = arbmProcessArbHeartBeatRsp(pMgmt, pMsg);
       break;
     case TDMT_ARB_REGISTER_GROUPS:
       code = arbmProcessRegisterGroupsRep(pMgmt, pMsg);
@@ -56,6 +59,9 @@ static void arbmProcessQueue(SQueueInfo *pInfo, SRpcMsg *pMsg) {
       break;
     case TDMT_ARB_HEARTBEAT_TIMER:
       code = arbmProcessArbHeartBeatTimer(pMgmt, pMsg);
+      break;
+    case TDMT_ARB_CHECK_SYNC_TIMER:
+      code = arbmProcessArbCheckSyncTimer(pMgmt, pMsg);
       break;
     default:
       terrno = TSDB_CODE_MSG_NOT_PROCESSED;

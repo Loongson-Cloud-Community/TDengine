@@ -27,10 +27,10 @@
 static int32_t vnodeProcessCreateStbReq(SVnode *pVnode, int64_t ver, void *pReq, int32_t len, SRpcMsg *pRsp);
 static int32_t vnodeProcessAlterStbReq(SVnode *pVnode, int64_t ver, void *pReq, int32_t len, SRpcMsg *pRsp);
 static int32_t vnodeProcessDropStbReq(SVnode *pVnode, int64_t ver, void *pReq, int32_t len, SRpcMsg *pRsp);
-static int32_t vnodeProcessCreateTbReq(SVnode *pVnode, int64_t ver, void *pReq, int32_t len, SRpcMsg *pRsp, 
+static int32_t vnodeProcessCreateTbReq(SVnode *pVnode, int64_t ver, void *pReq, int32_t len, SRpcMsg *pRsp,
                                         SRpcMsg *pOriginRpc);
 static int32_t vnodeProcessAlterTbReq(SVnode *pVnode, int64_t ver, void *pReq, int32_t len, SRpcMsg *pRsp);
-static int32_t vnodeProcessDropTbReq(SVnode *pVnode, int64_t ver, void *pReq, int32_t len, SRpcMsg *pRsp, 
+static int32_t vnodeProcessDropTbReq(SVnode *pVnode, int64_t ver, void *pReq, int32_t len, SRpcMsg *pRsp,
                                       SRpcMsg *pOriginRpc);
 static int32_t vnodeProcessSubmitReq(SVnode *pVnode, int64_t ver, void *pReq, int32_t len, SRpcMsg *pRsp);
 static int32_t vnodeProcessCreateTSmaReq(SVnode *pVnode, int64_t ver, void *pReq, int32_t len, SRpcMsg *pRsp);
@@ -44,6 +44,7 @@ static int32_t vnodeProcessCreateIndexReq(SVnode *pVnode, int64_t ver, void *pRe
 static int32_t vnodeProcessDropIndexReq(SVnode *pVnode, int64_t ver, void *pReq, int32_t len, SRpcMsg *pRsp);
 static int32_t vnodeProcessCompactVnodeReq(SVnode *pVnode, int64_t ver, void *pReq, int32_t len, SRpcMsg *pRsp);
 static int32_t vnodeProcessConfigChangeReq(SVnode *pVnode, int64_t ver, void *pReq, int32_t len, SRpcMsg *pRsp);
+static int32_t vnodeProcessArbCheckSyncReq(SVnode *pVnode, void *pReq, int32_t len, SRpcMsg *pRsp);
 
 static int32_t vnodePreprocessCreateTableReq(SVnode *pVnode, SDecoder *pCoder, int64_t btime, int64_t *pUid) {
   int32_t code = 0;
@@ -629,6 +630,10 @@ int32_t vnodeProcessWriteMsg(SVnode *pVnode, SRpcMsg *pMsg, int64_t ver, SRpcMsg
     case TDMT_SYNC_CONFIG_CHANGE:
       vnodeProcessConfigChangeReq(pVnode, ver, pReq, len, pRsp);
       break;
+    /* ARB */
+    case TDMT_VND_ARB_CHECK_SYNC:
+      vnodeProcessArbCheckSyncReq(pVnode, pReq, len, pRsp);
+      break;
     default:
       vError("vgId:%d, unprocessed msg, %d", TD_VID(pVnode), pMsg->msgType);
       return -1;
@@ -886,7 +891,7 @@ _err:
   return -1;
 }
 
-static int32_t vnodeProcessCreateTbReq(SVnode *pVnode, int64_t ver, void *pReq, int32_t len, SRpcMsg *pRsp, 
+static int32_t vnodeProcessCreateTbReq(SVnode *pVnode, int64_t ver, void *pReq, int32_t len, SRpcMsg *pRsp,
                                         SRpcMsg *pOriginRpc) {
   SDecoder           decoder = {0};
   SEncoder           encoder = {0};
@@ -1023,7 +1028,7 @@ _exit:
     pCreateReq = req.pReqs + iReq;
     taosMemoryFree(pCreateReq->sql);
     taosMemoryFree(pCreateReq->comment);
-    taosArrayDestroy(pCreateReq->ctb.tagName);    
+    taosArrayDestroy(pCreateReq->ctb.tagName);
   }
   taosArrayDestroyEx(rsp.pArray, tFreeSVCreateTbRsp);
   taosArrayDestroy(tbUids);
@@ -1241,7 +1246,7 @@ static int32_t vnodeProcessDropTbReq(SVnode *pVnode, int64_t ver, void *pReq, in
 
     taosStringBuilderDestroy(&sb);
   }
-  
+
 _exit:
   taosArrayDestroy(tbUids);
   tdUidStoreFree(pStore);
@@ -2052,6 +2057,33 @@ static int32_t vnodeProcessConfigChangeReq(SVnode *pVnode, int64_t ver, void *pR
   pRsp->code = TSDB_CODE_SUCCESS;
   pRsp->pCont = NULL;
   pRsp->contLen = 0;
+
+  return 0;
+}
+
+static int32_t vnodeProcessArbCheckSyncReq(SVnode *pVnode, void *pReq, int32_t len, SRpcMsg *pRsp) {
+  SVArbCheckSyncReq syncReq = {0};
+
+  tDeserializeSVArbCheckSyncReq(pReq, len, &syncReq);
+
+  pRsp->msgType = TDMT_VND_ARB_CHECK_SYNC_RSP;
+  pRsp->code = TSDB_CODE_SUCCESS;
+  pRsp->pCont = NULL;
+  pRsp->contLen = 0;
+
+  SVArbCheckSyncRsp syncRsp = {0};
+  syncRsp.arbId = syncReq.arbId;
+  memcpy(syncRsp.arbToken, syncReq.arbToken, TD_ARB_TOKEN_SIZE);
+  for (int i = 0; i < 2; i++) {
+    memcpy(syncRsp.memberTokens[i], syncReq.memberTokens[i], TD_ARB_TOKEN_SIZE);
+  }
+  syncRsp.groupId = TD_VID(pVnode);
+  SSyncState syncState = syncGetState(pVnode->sync);
+  if (syncState.state != TAOS_SYNC_STATE_LEADER) {
+    syncRsp.errCode = TSDB_CODE_SYN_NOT_LEADER;
+  } else {
+    syncRsp.errCode = syncGetAssignedLogSynced(pVnode->sync) ? TSDB_CODE_SUCCESS : TSDB_CODE_VND_ARB_NOT_SYNCED;
+  }
 
   return 0;
 }

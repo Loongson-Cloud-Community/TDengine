@@ -80,18 +80,20 @@ void            arbmReleaseArbitrator(SArbitratorMgmt *pMgmt, SArbitratorObj *pA
 
 // arbmHandle.c
 SArray *arbmGetMsgHandles();
-int32_t arbmProcessCreateReq(SArbitratorMgmt *pMgmt, SRpcMsg *pMsg);
-int32_t arbmProcessDropReq(SArbitratorMgmt *pMgmt, SRpcMsg *pMsg);
-int32_t arbmProcessArbHeartBeatRsp(SArbitratorMgmt *pMgmt, SRpcMsg *pMsg);
+int32_t arbmProcessCreateReq(SArbitratorMgmt *pMgmt, SRpcMsg *pReq);
+int32_t arbmProcessDropReq(SArbitratorMgmt *pMgmt, SRpcMsg *pReq);
+int32_t arbmProcessArbHeartBeatRsp(SArbitratorMgmt *pMgmt, SRpcMsg *pRsp);
 int32_t arbmProcessGetAribtratorsRsp(SArbitratorMgmt *pMgmt, SRpcMsg *pRsp);
 int32_t arbmProcessRegisterGroupsRep(SArbitratorMgmt *pMgmt, SRpcMsg *pReq);
 int32_t arbmProcessUnregisterGroupsRep(SArbitratorMgmt *pMgmt, SRpcMsg *pReq);
 
-int32_t arbmProcessGetArbitratorsTimer(SArbitratorMgmt *pMgmt, SRpcMsg *pRsp);
-int32_t arbmProcessArbHeartBeatTimer(SArbitratorMgmt *pMgmt, SRpcMsg *pRsp);
+int32_t arbmProcessGetArbitratorsTimer(SArbitratorMgmt *pMgmt, SRpcMsg *pReq);
+int32_t arbmProcessArbHeartBeatTimer(SArbitratorMgmt *pMgmt, SRpcMsg *pReq);
+int32_t arbmProcessArbCheckSyncTimer(SArbitratorMgmt *pMgmt, SRpcMsg *pReq);
 
-void arbmPullupGetArbitrators(SArbitratorMgmt *pMgmt);
+void arbmGetArbitrators(SArbitratorMgmt *pMgmt);
 void arbmPullupArbHeartbeat(SArbitratorMgmt *pMgmt);
+void arbmPullupArbCheckSync(SArbitratorMgmt *pMgmt);
 
 // arbmFile.c
 int32_t arbmGetArbitratorListFromFile(SArbitratorMgmt *pMgmt, SArbWrapperCfg **ppCfgs, int32_t *numOfArbitrators);
