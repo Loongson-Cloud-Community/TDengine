@@ -46,7 +46,7 @@ static void arbmProcessQueue(SQueueInfo *pInfo, SRpcMsg *pMsg) {
       code = arbmProcessArbHeartBeatRsp(pMgmt, pMsg);
       break;
     case TDMT_VND_ARB_CHECK_SYNC_RSP:
-      code = arbmProcessArbHeartBeatRsp(pMgmt, pMsg);
+      code = arbmProcessCheckSyncRsp(pMgmt, pMsg);
       break;
     case TDMT_ARB_REGISTER_GROUPS:
       code = arbmProcessRegisterGroupsRep(pMgmt, pMsg);

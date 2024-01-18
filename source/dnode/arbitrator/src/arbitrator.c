@@ -27,7 +27,6 @@ static inline void arbSendRsp(SRpcMsg *pMsg, int32_t code) {
 }
 
 static SArbGroupMember *arbitratorGetMember(SArbitrator *pArb, int32_t dnodeId, int32_t groupId);
-static SArbGroup       *arbitratorGetGroup(SArbitrator *pArb, int32_t groupId);
 
 static int32_t arbitratorProcessRegisterGroupsReq(SArbitrator *pArb, SRpcMsg *pMsg) {
   SArbRegisterGroupReq registerReq = {0};
@@ -140,7 +139,6 @@ static int32_t arbitratorProcessArbHeartBeatTimer(SArbitrator *pArb, SRpcMsg *pM
     req.dnodeId = dnodeId;
 
     req.arbSeqArray = taosArrayInit(16, sizeof(SVArbHeartBeatSeq));
-
     void *piditer = taosHashIterate(pArbDnode->groupIds, NULL);
     while (piditer) {
       int32_t         *pGroupId = piditer;
@@ -179,11 +177,13 @@ static bool arbitratorUpdateMemberState(SArbitrator *pArb, SArbGroupMember *pLoc
   pLocalMember->state.lastHbMs = nowMs;
   if (strncmp(pLocalMember->state.token, pHbMember->memberToken, TD_ARB_TOKEN_SIZE) == 0) goto _OVER;
 
+  // TODO(LSG): DEBUG
+  arbInfo("arbId:%d, update dnodeId:%d groupId:%d token, local:[%s] msg:[%s] ", pArb->arbId, dnodeId, pHbMember->groupId,
+          pLocalMember->state.token, pHbMember->memberToken);
+
   // update token
   memcpy(pLocalMember->state.token, pHbMember->memberToken, TD_ARB_TOKEN_SIZE);
   tokenUpdated = true;
-  arbInfo("arbId:%d, update dnodeId:%d groupId:%d token, local:%s msg:%s ", pArb->arbId, dnodeId, pHbMember->groupId,
-          pLocalMember->state.token, pHbMember->memberToken);
 
 _OVER:
   return tokenUpdated;
@@ -230,7 +230,7 @@ static int32_t arbitratorProcessArbHeartBeatRsp(SArbitrator *pArb, SRpcMsg *pMsg
     }
 
     bool tokenUpdated = arbitratorUpdateMemberState(pArb, pLocalMember, pHbMember, nowMs);
-    SArbGroup *pGroup = arbitratorGetGroup(pArb, pHbMember->groupId);
+    SArbGroup *pGroup = taosHashGet(pArb->arbGroupMap, &pHbMember->groupId, sizeof(int32_t));
     if (pGroup == NULL) {
       continue;
     }
@@ -257,13 +257,13 @@ static int32_t arbitratorProcessArbCheckSyncTimer(SArbitrator *pArb, SRpcMsg *pM
 
     // has assigned_leader or isSync => skip
     if (pArbGroup->assignedLeader.dnodeId != 0 || pArbGroup->isSync) {
-      pIter = taosHashIterate(pArb->arbDnodeMap, pIter);
+      pIter = taosHashIterate(pArb->arbGroupMap, pIter);
       continue;
     }
 
     // hb timeout => skip
     if (pArbMember->state.lastHbMs < nowMs - ARBITRATOR_TIMEOUT_SEC * 1000) {
-      pIter = taosHashIterate(pArb->arbDnodeMap, pIter);
+      pIter = taosHashIterate(pArb->arbGroupMap, pIter);
       continue;
     }
 
@@ -286,7 +286,7 @@ static int32_t arbitratorProcessArbCheckSyncTimer(SArbitrator *pArb, SRpcMsg *pM
     pArb->msgCb.getDnodeEpFp(pArb->msgCb.data, pArbMember->info.dnodeId, NULL, epset.eps[0].fqdn, &epset.eps[0].port);
     pArb->msgCb.sendReqFp(&epset, &rpcMsg);
 
-    pIter = taosHashIterate(pArb->arbDnodeMap, pIter);
+    pIter = taosHashIterate(pArb->arbGroupMap, pIter);
   }
 
   return 0;
@@ -311,7 +311,7 @@ static int32_t arbitratorProcessArbCheckSyncRsp(SArbitrator *pArb, SRpcMsg *pMsg
     goto _OVER;
   }
 
-  SArbGroup *pGroup = arbitratorGetGroup(pArb, checkSyncRsp.groupId);
+  SArbGroup *pGroup = taosHashGet(pArb->arbGroupMap, &checkSyncRsp.groupId, sizeof(int32_t));
   if (pGroup == NULL) {
     terrno = TSDB_CODE_NOT_FOUND;
     arbError("arbId:%d, groupId:%d not found", pArb->arbId, checkSyncRsp.groupId);
@@ -405,16 +405,5 @@ static SArbGroupMember *arbitratorGetMember(SArbitrator *pArb, int32_t dnodeId, 
 
 _OVER:
   arbTrace("arbId:%d, get member groupId:%d dnodeId:%d failed, no member found", pArb->arbId, groupId, dnodeId);
-  return NULL;
-}
-
-static SArbGroup *arbitratorGetGroup(SArbitrator *pArb, int32_t groupId) {
-  SArbGroup *pGroup = taosHashGet(pArb->arbGroupMap, &groupId, sizeof(int32_t));
-  if (pGroup == NULL) {
-    goto _OVER;
-  }
-
-_OVER:
-  arbTrace("arbId:%d, get group groupId:%d failed, no group found", pArb->arbId, groupId);
   return NULL;
 }

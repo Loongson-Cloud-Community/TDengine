@@ -2085,6 +2085,14 @@ static int32_t vnodeProcessArbCheckSyncReq(SVnode *pVnode, void *pReq, int32_t l
     syncRsp.errCode = syncGetAssignedLogSynced(pVnode->sync) ? TSDB_CODE_SUCCESS : TSDB_CODE_VND_ARB_NOT_SYNCED;
   }
 
+  int32_t contLen = tSerializeSVArbCheckSyncRsp(NULL, 0, &syncRsp);
+  void *pHead = rpcMallocCont(contLen);
+
+  tSerializeSVArbCheckSyncRsp(pHead, contLen, &syncRsp);
+
+  pRsp->pCont = pHead;
+  pRsp->contLen = contLen;
+
   return 0;
 }
 

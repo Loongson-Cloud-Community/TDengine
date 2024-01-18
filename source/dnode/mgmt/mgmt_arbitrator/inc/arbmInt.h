@@ -83,6 +83,7 @@ SArray *arbmGetMsgHandles();
 int32_t arbmProcessCreateReq(SArbitratorMgmt *pMgmt, SRpcMsg *pReq);
 int32_t arbmProcessDropReq(SArbitratorMgmt *pMgmt, SRpcMsg *pReq);
 int32_t arbmProcessArbHeartBeatRsp(SArbitratorMgmt *pMgmt, SRpcMsg *pRsp);
+int32_t arbmProcessCheckSyncRsp(SArbitratorMgmt *pMgmt, SRpcMsg *pRsp);
 int32_t arbmProcessGetAribtratorsRsp(SArbitratorMgmt *pMgmt, SRpcMsg *pRsp);
 int32_t arbmProcessRegisterGroupsRep(SArbitratorMgmt *pMgmt, SRpcMsg *pReq);
 int32_t arbmProcessUnregisterGroupsRep(SArbitratorMgmt *pMgmt, SRpcMsg *pReq);
