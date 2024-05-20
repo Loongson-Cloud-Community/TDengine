@@ -1,0 +1,28 @@
+REGISTRY?=lcr.loongnix.cn
+ORGANIZATION?=tdengine
+REPOSITORY?=tdengine
+TAG?=2.4.0.16
+pkgFile?=TDengine-server-2.4.0.16-Linux-loongarch64.tar.gz
+dirName?=TDengine-server-2.4.0.16
+
+IMAGE=$(REGISTRY)/$(ORGANIZATION)/$(REPOSITORY):$(TAG)
+
+default: image
+
+downloads: tini-static $(pkgFile)
+
+tini-static:
+	wget -O tini-static https://github.com/Loongson-Cloud-Community/tini/releases/download/v0.19.0/tini-static_abi2.0
+
+$(pkgFile):
+	wget https://github.com/Loongson-Cloud-Community/TDengine/releases/download/ver-2.4.0.16/TDengine-server-2.4.0.16-Linux-loongarch64.tar.gz
+
+image: downloads
+	docker build \
+		--build-arg http_proxy=$(http_proxy) \
+		--build-arg https_proxy=$(https_proxy) \
+		--build-arg pkgFile=$(pkgFile) \
+		--build-arg dirName=$(dirName) \
+		-t $(IMAGE) \
+		.
+
