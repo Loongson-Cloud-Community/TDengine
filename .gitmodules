@@ -14,9 +14,10 @@
 [submodule "src/kit/taos-tools"]
 	path = src/kit/taos-tools
 	url = https://github.com/taosdata/taos-tools
-[submodule "src/plugins/taosadapter"]
-	path = src/plugins/taosadapter
-	url = https://github.com/taosdata/taosadapter
 [submodule "examples/rust"]
 	path = examples/rust
 	url = https://github.com/songtianyi/tdengine-rust-bindings.git
+[submodule "src/plugins/taosadapter"]
+	path = src/plugins/taosadapter
+	url = https://github.com/Loongson-Cloud-Community/taosadapter.git
+	branch = loongarch_64-for-tdengine2.4.0.16
