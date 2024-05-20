@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM lcr.loongnix.cn/library/debian:sid
 
 WORKDIR /root
 

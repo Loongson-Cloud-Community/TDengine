@@ -2,7 +2,7 @@
 #
 
 set -e
-#set -x
+set -x
 
 # dockerbuild.sh 
 #             -c [aarch32 | aarch64 | amd64 | x86 | mips64 ...]  
@@ -52,7 +52,7 @@ do
       dockerLatest=$(echo $OPTARG)
       ;;
     h)
-      echo "Usage: `basename $0`  -c [aarch32 | aarch64 | amd64 | x86 | mips64 ...] "
+      echo "Usage: `basename $0`  -c [aarch32 | aarch64 | amd64 | x86 | mips64 | loongarch64...] "
       echo "                      -n [version number] "
       echo "                      -p [password for docker hub] "
       echo "                      -V [stable | beta] "
@@ -105,14 +105,16 @@ elif [[ "${cpuType}" == "aarch64" ]]; then
     cpuTypeAlias="arm64"
 elif [[ "${cpuType}" == "aarch32" ]]; then
     cpuTypeAlias="armhf"
+elif [[ "${cpuType}" == "loongarch64" ]]; then
+    cpuTypeAlias="loong64"
 else
     echo "Unknown cpuType: ${cpuType}"
     exit 1
 fi
 
 docker build --rm -f "${Dockerfile}"  --network=host -t tdengine/tdengine-${dockername}:${version} "." --build-arg pkgFile=${pkgFile} --build-arg dirName=${dirName} --build-arg cpuType=${cpuTypeAlias}
-docker login -u tdengine -p ${passWord}  #replace the docker registry username and password
-docker push tdengine/tdengine-${dockername}:${version}
+#docker login -u tdengine -p ${passWord}  #replace the docker registry username and password
+#docker push tdengine/tdengine-${dockername}:${version}
 
 if [ -n "$(docker ps -aq)" ] ;then 
   echo "delte docker process"

@@ -684,11 +684,11 @@ void taosSetCoreDump() {
   args.newlen = new_len;
 
   old_len = sizeof(old_usespid);
-
+#ifndef __loongarch64
   if (syscall(SYS__sysctl, &args) == -1) {
     uInfo("_sysctl(kern_core_uses_pid) set fail: %s", strerror(errno));
   }
-
+#endif
   uInfo("The old core_uses_pid[%" PRIu64 "]: %d", old_len, old_usespid);
 
   old_usespid = 0;
@@ -700,11 +700,11 @@ void taosSetCoreDump() {
   args.oldlenp = &old_len;
 
   old_len = sizeof(old_usespid);
-
+#ifndef __loongarch64
   if (syscall(SYS__sysctl, &args) == -1) {
     uInfo("_sysctl(kern_core_uses_pid) get fail: %s", strerror(errno));
   }
-
+#endif
   uInfo("The new core_uses_pid[%" PRIu64 "]: %d", old_len, old_usespid);
 #endif
 }

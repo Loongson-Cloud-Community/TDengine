@@ -37,7 +37,7 @@ extern "C" {
 #include <stdlib.h>
 #include <string.h>
 
-#if defined(_TD_LINUX_64) || defined(_TD_LINUX_32) || defined(_TD_MIPS_64)  || defined(_TD_ARM_32) || defined(_TD_ARM_64)  || defined(_TD_DARWIN_64)
+#if defined(_TD_LINUX_64) || defined(_TD_LINUX_32) || defined(_TD_MIPS_64)  || defined(_TD_ARM_32) || defined(_TD_ARM_64)  || defined(_TD_DARWIN_64) || defined(_TD_LOONGARCH_64)
   #include <arpa/inet.h>
   #include <dirent.h>
   #include <fcntl.h>
